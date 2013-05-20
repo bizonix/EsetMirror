@@ -3,7 +3,6 @@ include 'config.php';
 $z=new EsetKeysGrab();
 $z->grabKeys();
 $z->checkKeys();
-print_r($z->newKeys);
 print_r($z->xzKeys);
 //$x=new EsetUpdatesDownloader();
 //print_r($x->downloadedFiles);
@@ -64,7 +63,7 @@ class EsetKeysGrab
                         array_push($this->xzKeys,$pwd);
                     }
                 }
-				echo " ".(count($this->DB['Temp'])-$pre)." OK\n";
+				echo " OK Found ".(count($this->DB['Temp'])-$pre)." Keys\n";
             }
             else
             {
