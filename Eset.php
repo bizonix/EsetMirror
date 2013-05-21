@@ -1,16 +1,11 @@
 <?php
 include 'config.php';
-$z=new EsetKeysGrab();
-$z->grabKeys();
-$z->checkKeys();
-print_r($z->xzKeys);
-//$x=new EsetUpdatesDownloader();
-//print_r($x->downloadedFiles);
+$x=new EsetUpdatesDownloader();
+print_r($x->downloadedFiles);
 class EsetKeysGrab
 {
     var $KeySites = array(
     		'http://feeds.feedburner.com/EsetNod32KeyslatestUpdatesfreshUsernamejem?format=xml' => "%Username:(\w+-.*)</?.*br/>.*Password:(.*)</?.*br/>%Ui",
-    		//"http://feeds.feedburner.com/FreshEsetNod32Keys?format=xml" => "%Username:(\w+-.*)</?.*br/>.*Password:(.*)</?.*br/>%Ui",
     		"http://hhuu.net/" => "%Username:(.*)<br/>Password:(.*)<%Ui",
     		"http://page2rss.com/page?url=hhuu.net/" => "%page2rssins\">Username:(.*)<?Password:(.*)</p>%Ui",
     		"http://keys-nod.blogspot.com/" => "%<br>Username:(.*)<br>Password:(.*)<br>%Ui",
@@ -21,17 +16,32 @@ class EsetKeysGrab
             "http://www.fiaofiao.net/?p=105"=>"%<p>Username:(.*)<br/>Password:(.*)<%Ui",
             
     );
-    var $KeysToChek = array(), $xzKeys = array();
-
+    var $xzKeys = array();
+    var $pwd;
+    
     function __construct()
     {
         $this->LoadDB();
-        
+        $this->getKey();
     }
     function __destruct()
     {
         $this->DB['Temp']=array();
         $this->SaveDB();
+    }
+    function getKey()
+    {
+        if (empty($this->DB['Good']))
+        {
+            $this->grabKeys();
+        }
+        foreach($this->DB['Good'] as $this->pwd)
+        {
+            if($this->checkPwd($this->pwd))
+            {
+                return $this->pwd;
+            }
+        }
     }
     function grabKeys()
     {
@@ -70,6 +80,7 @@ class EsetKeysGrab
     		    echo "[-]" . $Site . "\n";
             }
         }
+        $this->checkKeys();
     }
 	function SaveDB() 
 	{
@@ -92,6 +103,45 @@ class EsetKeysGrab
 		    );
         }
 	}
+    function checkPwd($KeysToChek)
+    {
+
+        if(false !== @file_get_contents('http://update.eset.com/v3-rel-sta/mod_015_amon/em015_32_n1.nup', false, stream_context_create(array(
+        	'http' => array(
+        		'method' => 'HEAD',
+        		'header' => 'Authorization: Basic ' . base64_encode($KeysToChek) ,
+        	)
+        ))))
+        {
+            if( $unbanned = array_search($KeysToChek, $this->DB['Ban']) )
+            {
+                unset($this->DB['Ban'][$unbanned]);
+				echo "[-]Banned Key $KeysToChek unBanned\n";
+            }
+            else
+            {
+    			echo "[!]Good Key " . $KeysToChek . "\n";
+            }
+            $this->addKeysToDB($KeysToChek,'Good');
+            return true;
+            
+        }
+        else
+        {
+            if( $banned = array_search($KeysToChek, $this->DB['Good']) )
+            {
+                unset($this->DB['Good'][$banned]);
+				echo "[-]Good Key $KeysToChek Banned\n";
+            }
+            else
+            {
+    		     echo "[-]Key $KeysToChek Banned\n";
+            }
+            $this->addKeysToDB($KeysToChek,'Ban');
+            return false;
+        }
+        
+    }
     function checkKeys()
     {
 		echo "[*]KeyDB [" . $this->DB['Date'] . "]\n";
@@ -111,35 +161,9 @@ class EsetKeysGrab
 				echo "[-]Key $KeysToChek Banned\n";
 				continue;
             }
-            $result = @file_get_contents('http://update.eset.com/v3-rel-sta/mod_015_amon/em015_32_n1.nup', false, stream_context_create(array(
-            	'http' => array(
-            		'method' => 'HEAD',
-            		'header' => 'Authorization: Basic ' . base64_encode($KeysToChek) ,
-            	)
-            )));
-            if($result!==false)
-            {
-				echo "[!]Good Key " . $KeysToChek . "\n";
-                $this->addKeysToDB($KeysToChek,'Good');
-            }
-            else
-            {
-                if( $banned = array_search($KeysToChek, $this->DB['Good']) )
-                {
-                    unset($this->DB['Good'][$banned]);
-					echo "[-]Good Key $KeysToChek Banned\n";
-                }
-                else
-                {
-    			     echo "[-]Key $KeysToChek Banned\n";
-                }
-                $this->addKeysToDB($KeysToChek,'Ban');
-            }
+            
+            $this->checkPwd($KeysToChek);
 		}
-        
-    }
-    function getKey()
-    {
         
     }
     function addKeysToDB($Key,$Section='Temp')
@@ -185,14 +209,17 @@ class EsetUpdatesDownloader
 	//	'Bulgarian' => '1026'
 	);
 	var $EsetServers = array(
-		'global' => 'update.eset.com'
+		'global' => 'um18.eset.com'//update
 	);
+
 	function __construct() 
 	{
         if(!file_exists(unrar))
         {
             die("unrar not found!\n");
         }
+        $this->EsetKey = new EsetKeysGrab();
+        
 		return $this->run();
 	}
 	public function run() 
@@ -216,12 +243,24 @@ class EsetUpdatesDownloader
 		$this->DownloadFile($fileName);
         $this->ExtractFile($fileName);
         
+        if(!isset($this->pwd))
+        {
+            if(!$this->EsetKey->pwd)
+            {
+                $this->pwd=$this->EsetKey->getKey();
+            }
+            else
+            {
+                $this->pwd=$this->EsetKey->pwd;
+            }
+        }
         
         $oldUpdateData = $this->ReadUpdateFile(OLD_UPDATE_DIRECTORY.$fileName);
         $newUpdateData = $this->ReadUpdateFile(DOWNLOAD_DIRECTORY.$fileName);
         
         $this->setEsetServers($newUpdateData['HOSTS']['Other']);
-
+        
+        
         $this->DownloadChanges($oldUpdateData, $newUpdateData);
 	}
     function RemoveLanguages()
@@ -318,18 +357,21 @@ class EsetUpdatesDownloader
 		
 		curl_setopt($ch, CURLOPT_USERAGENT, 'ESS Update (Windows; U; 32bit; VDB 12334; BPC 4.2.67.10; OS: 5.1.2600 SP 3.0 NT; CH 0.0; LNG 1049; x32c; UPD AUTOSELECT; APP eav; BEO 1; CPU 5964; ASP 0.10; FW 0.0; PX 0; PUA 1)');
 		curl_setopt($ch, CURLOPT_TIMEOUT, 100);
-		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        if (ini_get('open_basedir') == '' && ini_get('safe_mode' == 'Off'))
+        {
+    		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        }
 		curl_setopt($ch, CURLOPT_COOKIEJAR, HOME."/cookie.txt");
 		curl_setopt($ch, CURLOPT_COOKIEFILE, HOME."/cookie.txt");
         
 		if (isset($this->pwd)) 
 		{
-			curl_setopt($ch, CURLOPT_USERPWD, $pwd);
+			curl_setopt($ch, CURLOPT_USERPWD, $this->pwd);
 		}
 		$res = curl_exec($ch);
 		if (curl_errno($ch)) 
 		{
-			print "Error: [" . date('d.m.Y H:i') . "]" . 'Url: ' . $urlL . ' ' . curl_error($ch) . "\n";
+			print "Error: [" . date('d.m.Y H:i') . "]\n" . 'Url: ' . $fileName . ' ' . curl_error($ch) . "\n";
 			return false;
 		}
 		$code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -345,8 +387,8 @@ class EsetUpdatesDownloader
             {
                 unlink($file);
             }
-			echo "file $urlL\n";
-			print_r(self::$EsetServer);
+			echo "file $fileName code:$code\n";
+			print_r($this->getEsetServer());
 			die("\nerr 404\n");
 		}
 		if ($nobody) 
@@ -360,7 +402,7 @@ class EsetUpdatesDownloader
 			{
 				if (!in_array($length, array(
 					188
-				))) print "need update $urlL remote:$length local:$nobody\n";
+				))) print "need update $fileName remote:$length local:$nobody\n";
 				return false;
 			}
 		}
@@ -368,6 +410,10 @@ class EsetUpdatesDownloader
 	}
 	function DownloadChanges($newUpdateData, $oldUpdateData) 
 	{
+        if($newUpdateData===null)
+        {
+            die('Non UpdateData');
+        }
 		foreach ($newUpdateData as $SectionKey => $SectionValue) 
 		{
 			if(isset($SectionValue['file'])) 
@@ -413,7 +459,7 @@ class EsetUpdatesDownloader
                             );
                             if(!in_array($SectionValue['file'],$this->downloadedFiles))
                             {
-                                
+                                $this->DownloadFile($SectionValue['file']);
                                 array_push($this->downloadedFiles,$SectionValue['file']);
                             }
 						}
@@ -428,6 +474,10 @@ class EsetUpdatesDownloader
     }
 	function ReadUpdateFile($file) 
 	{
+        if(!file_exists($file))
+        {
+            return null;
+        }
         if(function_exists('parse_ini_file'))
         {
             return parse_ini_file($file, true, INI_SCANNER_RAW);
