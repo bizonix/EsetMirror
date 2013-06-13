@@ -14,11 +14,11 @@ class EsetKeysGrab
     		"http://www.myarticle.com/Internet/Security/the-newest-nod32-keys.html" => "%<p>Username:(.*)<.*<p>Password:(.*)<%Ui",
             "http://www.nnvv.org/?p=66"=>"%<p>Username:(.*)<br/>Password:(.*)</p>%Ui",
             "http://www.fiaofiao.net/?p=105"=>"%<p>Username:(.*)<br/>Password:(.*)<%Ui",
-            
+
     );
     var $xzKeys = array();
     var $pwd;
-    
+
     function __construct()
     {
         $this->LoadDB();
@@ -48,20 +48,20 @@ class EsetKeysGrab
 		echo "[*]Start Grab keys\n";
 		foreach ($this->KeySites as $Site => $SitePreg)
         {
-			if (preg_match_all($SitePreg, preg_replace("/\s+/", "", html_entity_decode(str_replace(array('nod32key'),array('Password'),file_get_contents($Site)) , null, 'UTF-8')) , $SiteKeys)) 
+			if (preg_match_all($SitePreg, preg_replace("/\s+/", "", html_entity_decode(str_replace(array('nod32key'),array('Password'),file_get_contents($Site)) , null, 'UTF-8')) , $SiteKeys))
             {
 				echo "[!]" . $Site;
 				unset($SiteKeys[0]);
                 //print_r(array($Site=>$SiteKeys));
                 $pre=count($this->DB['Temp']);
 
-			    for ($i = 0;$i < count($SiteKeys[1]);$i++) 
+			    for ($i = 0;$i < count($SiteKeys[1]);$i++)
                 {
 					$login  = strtoupper(trim(str_replace('<br>', '', $SiteKeys[1][$i])));
 					$passwd = trim($SiteKeys[2][$i]);
                     $pwd=$login.":".$passwd;
-                    
-					if (strlen($login) < 20 || strlen($login) < 20) 
+
+					if (strlen($login) < 20 || strlen($login) < 20)
 					{
                         if(!in_array($pwd,$this->DB['Temp']))
                         {
@@ -82,14 +82,14 @@ class EsetKeysGrab
         }
         $this->checkKeys();
     }
-	function SaveDB() 
+	function SaveDB()
 	{
 		$this->DB['Date'] = date('d.m.Y');
 		file_put_contents('KeyDB.txt', json_encode($this->DB));
 	}
-	function LoadDB() 
+	function LoadDB()
 	{
-		if (file_exists('KeyDB.txt')) 
+		if (file_exists('KeyDB.txt'))
 		{
 			$this->DB= json_decode(file_get_contents('KeyDB.txt') , true);
 		}
@@ -124,7 +124,7 @@ class EsetKeysGrab
             }
             $this->addKeysToDB($KeysToChek,'Good');
             return true;
-            
+
         }
         else
         {
@@ -140,7 +140,7 @@ class EsetKeysGrab
             $this->addKeysToDB($KeysToChek,'Ban');
             return false;
         }
-        
+
     }
     function checkKeys()
     {
@@ -149,7 +149,7 @@ class EsetKeysGrab
         {
             $this->DB['Temp'] = array_merge($this->DB['Temp'], $this->DB['Good']);
         }
-        if (empty($this->DB['Temp'])) 
+        if (empty($this->DB['Temp']))
         {
         	$this->grabKeys();
         }
@@ -161,10 +161,10 @@ class EsetKeysGrab
 				echo "[-]Key $KeysToChek Banned\n";
 				continue;
             }
-            
+
             $this->checkPwd($KeysToChek);
 		}
-        
+
     }
     function addKeysToDB($Key,$Section='Temp')
     {
@@ -212,37 +212,37 @@ class EsetUpdatesDownloader
 		'global' => 'um18.eset.com'//update
 	);
 
-	function __construct() 
+	function __construct()
 	{
         if(!file_exists(unrar))
         {
             die("unrar not found!\n");
         }
         $this->EsetKey = new EsetKeysGrab();
-        
+
 		return $this->run();
 	}
-	public function run() 
+	public function run()
 	{
 		$this->ProcessUpdate('/eset_upd/update.ver');
 		$this->ProcessUpdate('/eset_upd/pcu/update.ver');
-        
+
 		$this->ProcessUpdate('/eset_upd/v4/update.ver');
 		$this->ProcessUpdate('/eset_upd/v4/pcu/update.ver');
-		
+
         $this->ProcessUpdate('/eset_upd/v5/update.ver');
 		$this->ProcessUpdate('/eset_upd/v5/pcu/update.ver');
-		
+
         $this->ProcessUpdate('/eset_upd/v6/update.ver');
 		$this->ProcessUpdate('/eset_upd/v6/pcu/update.ver');
 	}
-	function ProcessUpdate($fileName) 
+	function ProcessUpdate($fileName)
 	{
 		echo "http://dl.dropbox.com/u/" . DropBox . $fileName . "\n";
 		$this->MoveUpdateFile(DOWNLOAD_DIRECTORY . $fileName, OLD_UPDATE_DIRECTORY . $fileName);
 		$this->DownloadFile($fileName);
         $this->ExtractFile($fileName);
-        
+
         if(!isset($this->pwd))
         {
             if(!$this->EsetKey->pwd)
@@ -254,13 +254,13 @@ class EsetUpdatesDownloader
                 $this->pwd=$this->EsetKey->pwd;
             }
         }
-        
+
         $oldUpdateData = $this->ReadUpdateFile(OLD_UPDATE_DIRECTORY.$fileName);
         $newUpdateData = $this->ReadUpdateFile(DOWNLOAD_DIRECTORY.$fileName);
-        
+
         $this->setEsetServers($newUpdateData['HOSTS']['Other']);
-        
-        
+
+
         $this->DownloadChanges($oldUpdateData, $newUpdateData);
 	}
     function RemoveLanguages()
@@ -276,9 +276,9 @@ class EsetUpdatesDownloader
         $this->MoveUpdateFile($downloadedUpdateFile, $compressedFile);
 
         system(unrar.' e -y -inul ' . $compressedFile . ' ' . $downloadedUpdatePath);
-        
+
     }
-	function MoveUpdateFile($moveFrom, $moveTo) 
+	function MoveUpdateFile($moveFrom, $moveTo)
 	{
 		$this->EnsureDirExists($moveTo);
 		if (is_file($moveTo))
@@ -290,10 +290,10 @@ class EsetUpdatesDownloader
             rename($moveFrom, $moveTo);
         }
 	}
-	function EnsureDirExists($fileName) 
+	function EnsureDirExists($fileName)
 	{
 		$directory = dirname($fileName);
-		if (!is_dir($directory)) 
+		if (!is_dir($directory))
 		{
 			mkdir($directory, 0777, true);
 		}
@@ -322,14 +322,14 @@ class EsetUpdatesDownloader
         }
         return $this->EsetServers['global'];
     }
-	
-    function DownloadFile($fileName, $nobody = false) 
+
+    function DownloadFile($fileName, $nobody = false)
 	{
 
 		$ch = curl_init();
 		curl_setopt($ch, CURLOPT_URL, $this->getEsetServer().$fileName);
-        
-		if ($nobody) 
+
+		if ($nobody)
 		{
 			curl_setopt($ch, CURLOPT_NOBODY, true);
     		curl_setopt($ch, CURLOPT_HEADER, true);
@@ -339,8 +339,8 @@ class EsetUpdatesDownloader
 		{
             $file=DOWNLOAD_DIRECTORY.$fileName;
     		$this->EnsureDirExists($file);
-            
-			if (!($fp = fopen($file, "w"))) 
+
+			if (!($fp = fopen($file, "w")))
 			{
 				die('cannot save to file ' . $file);
 			}
@@ -354,7 +354,7 @@ class EsetUpdatesDownloader
 			curl_setopt($ch, CURLOPT_HEADER, false);
 			curl_setopt($ch, CURLOPT_HTTPHEADER, $req_header);
 		}
-		
+
 		curl_setopt($ch, CURLOPT_USERAGENT, 'ESS Update (Windows; U; 32bit; VDB 12334; BPC 4.2.67.10; OS: 5.1.2600 SP 3.0 NT; CH 0.0; LNG 1049; x32c; UPD AUTOSELECT; APP eav; BEO 1; CPU 5964; ASP 0.10; FW 0.0; PX 0; PUA 1)');
 		curl_setopt($ch, CURLOPT_TIMEOUT, 100);
         if (ini_get('open_basedir') == '' && ini_get('safe_mode' == 'Off'))
@@ -363,13 +363,13 @@ class EsetUpdatesDownloader
         }
 		curl_setopt($ch, CURLOPT_COOKIEJAR, HOME."/cookie.txt");
 		curl_setopt($ch, CURLOPT_COOKIEFILE, HOME."/cookie.txt");
-        
-		if (isset($this->pwd)) 
+
+		if (isset($this->pwd))
 		{
 			curl_setopt($ch, CURLOPT_USERPWD, $this->pwd);
 		}
 		$res = curl_exec($ch);
-		if (curl_errno($ch)) 
+		if (curl_errno($ch))
 		{
 			print "Error: [" . date('d.m.Y H:i') . "]\n" . 'Url: ' . $fileName . ' ' . curl_error($ch) . "\n";
 			return false;
@@ -377,11 +377,11 @@ class EsetUpdatesDownloader
 		$code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 		$length = curl_getinfo($ch, CURLINFO_CONTENT_LENGTH_DOWNLOAD);
 		curl_close($ch);
-		if ($file) 
+		if ($file)
 		{
 			fclose($fp);
 		}
-		if (in_array($code,array(401,404))) 
+		if (in_array($code,array(401,404)))
 		{
 			if (is_file($file))
             {
@@ -391,10 +391,10 @@ class EsetUpdatesDownloader
 			print_r($this->getEsetServer());
 			die("\nerr 404\n");
 		}
-		if ($nobody) 
+		if ($nobody)
 		{
 			if ($code == $nobody) return true;
-			elseif ($length == $nobody) 
+			elseif ($length == $nobody)
 			{
 				return true;
 			}
@@ -408,24 +408,24 @@ class EsetUpdatesDownloader
 		}
 		return $res;
 	}
-	function DownloadChanges($newUpdateData, $oldUpdateData) 
+	function DownloadChanges($newUpdateData, $oldUpdateData)
 	{
         if($newUpdateData===null)
         {
             die('Non UpdateData');
         }
-		foreach ($newUpdateData as $SectionKey => $SectionValue) 
+		foreach ($newUpdateData as $SectionKey => $SectionValue)
 		{
-			if(isset($SectionValue['file'])) 
+			if(isset($SectionValue['file']))
 			{
 				$newVersionId = $newBuild = $newBuildMs = $newFile = $newSize = False;
 				$LocalFile = DOWNLOAD_DIRECTORY . $SectionValue['file'];
 				$newFile = !file_exists($LocalFile);
 				$LocalSize = $newFile?0:filesize($LocalFile);
 
-				if (isset($SectionValue['language']) && !(in_array(strtolower($SectionValue['language']) , $this->allowed_languages) || in_array(strtolower($SectionValue['language']) , array_keys($this->allowed_languages)))) 
+				if (isset($SectionValue['language']) && !(in_array(strtolower($SectionValue['language']) , $this->allowed_languages) || in_array(strtolower($SectionValue['language']) , array_keys($this->allowed_languages))))
 				{
-					if (file_exists($LocalFile)) 
+					if (file_exists($LocalFile))
 					{
 						echo "need del " . $SectionValue['file'] . "\n";
 						unlink($LocalFile);
@@ -437,16 +437,16 @@ class EsetUpdatesDownloader
 					'Build',
 					'BuildMs',
 					'Size'
-				) as $RequestSection) 
+				) as $RequestSection)
 				{
 					$Section = strtolower($RequestSection);
-					if (isset($SectionValue[$Section]) && isset($oldUpdateData[$SectionKey][$Section])) 
+					if (isset($SectionValue[$Section]) && isset($oldUpdateData[$SectionKey][$Section]))
 					{
 						eval('$new' . $RequestSection . '=' . $this->toBool((int)$SectionValue[$Section] > (int)$oldUpdateData[$SectionKey][$Section]) . ';');
 						$newBySize = ((isset($SectionValue['size']) && $SectionValue['size'] != $LocalSize) || (isset($oldUpdateData[$SectionKey]['size']) && $oldUpdateData[$SectionKey]['size'] != $LocalSize));
-						if ($newSize || $newBuildMs || $newBuild || $newVersionId || $newFile || $newBySize) 
+						if ($newSize || $newBuildMs || $newBuild || $newVersionId || $newFile || $newBySize)
 						{
-							printf("new%s: %s -> %s File: %s, newFile: %s, newBySize: %s (LocalSize:%s,newSize:%s,oldSize:%s)\n", 
+							printf("new%s: %s -> %s File: %s, newFile: %s, newBySize: %s (LocalSize:%s,newSize:%s,oldSize:%s)\n",
                                     $RequestSection,
                                     $oldUpdateData[$SectionKey][$Section],
                                     $SectionValue[$Section],
@@ -472,7 +472,8 @@ class EsetUpdatesDownloader
     {
          return ($value===true? 'True' : 'False');
     }
-	function ReadUpdateFile($file) 
+
+	function ReadUpdateFile($file)
 	{
         if(!file_exists($file))
         {
@@ -482,10 +483,10 @@ class EsetUpdatesDownloader
         {
             return parse_ini_file($file, true, INI_SCANNER_RAW);
         }
-		foreach (file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $curstr) 
+		foreach (file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $curstr)
 		{
 			$curstr = trim($curstr);
-			if ($curstr[0] == '[') 
+			if ($curstr[0] == '[')
 			{
 				$section = substr($curstr, 1, strlen($curstr) - 2);
 				$updatever[$section] = array();
